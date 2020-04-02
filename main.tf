@@ -1,7 +1,7 @@
 terraform {
   required_version = "~> 0.12"
   required_providers {
-    aws = ">= 2.48.0, < 3"
+    aws    = ">= 2.48.0, < 3"
     random = "~> 2.2"
   }
 }
@@ -25,7 +25,7 @@ resource "aws_sns_topic" "marbot" {
 }
 
 resource "aws_sns_topic_policy" "marbot" {
-  count  = var.enabled ? 1 : 0
+  count = var.enabled ? 1 : 0
 
   arn    = join("", aws_sns_topic.marbot.*.arn)
   policy = data.aws_iam_policy_document.topic_policy.json
@@ -39,7 +39,7 @@ data "aws_iam_policy_document" "topic_policy" {
     resources = [join("", aws_sns_topic.marbot.*.arn)]
 
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = [
         "events.amazonaws.com",
       ]
@@ -146,11 +146,11 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
   threshold           = var.cpu_utilization_threshold
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
-  dimensions          = {
+  dimensions = {
     InstanceId = var.instance_id
   }
-  treat_missing_data  = "notBreaching"
-  tags                = var.tags
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
 }
 
 
@@ -170,11 +170,11 @@ resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   threshold           = var.cpu_credit_balance_threshold
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
-  dimensions          = {
+  dimensions = {
     InstanceId = var.instance_id
   }
-  treat_missing_data  = "notBreaching"
-  tags                = var.tags
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
 }
 
 
@@ -194,11 +194,11 @@ resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
   threshold           = var.ebs_io_credit_balance_threshold
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
-  dimensions          = {
+  dimensions = {
     InstanceId = var.instance_id
   }
-  treat_missing_data  = "notBreaching"
-  tags                = var.tags
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
 }
 
 
@@ -218,11 +218,11 @@ resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance" {
   threshold           = var.ebs_throughput_credit_balance_threshold
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
-  dimensions          = {
+  dimensions = {
     InstanceId = var.instance_id
   }
-  treat_missing_data  = "notBreaching"
-  tags                = var.tags
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
 }
 
 
@@ -242,11 +242,11 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
   threshold           = 0
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
-  dimensions          = {
+  dimensions = {
     InstanceId = var.instance_id
   }
-  treat_missing_data  = "notBreaching"
-  tags                = var.tags
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
 }
 
 
@@ -381,7 +381,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
   alarm_description   = "Average Network In+Out utilization over last 10 minutes too high. (created by marbot)"
   evaluation_periods  = 1
   comparison_operator = "GreaterThanThreshold"
-  threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100 
+  threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100
   alarm_actions       = [join("", aws_sns_topic.marbot.*.arn)]
   ok_actions          = [join("", aws_sns_topic.marbot.*.arn)]
   treat_missing_data  = "notBreaching"
