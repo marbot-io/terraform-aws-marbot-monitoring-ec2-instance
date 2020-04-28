@@ -22,7 +22,8 @@ variable "instance_id" {
 
 variable "instance_type" {
   type        = string
-  description = "The instance type of the EC2 instance that you want to monitor."
+  description = "Deprecated, not needed anymore."
+  default     = ""
 }
 
 variable "cpu_utilization_threshold" {

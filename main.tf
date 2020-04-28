@@ -255,8 +255,12 @@ data "http" "network" {
   url = "https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json"
 }
 
+data "aws_instance" "instance" {
+  instance_id = var.instance_id
+}
+
 locals {
-  network          = lookup(jsondecode(data.http.network.body), var.instance_type, {})
+  network          = lookup(jsondecode(data.http.network.body), data.aws_instance.instance.instance_type, {})
   network_baseline = lookup(local.network, "baseline", -1)
   network_burst    = lookup(local.network, "burst", -1)
 }

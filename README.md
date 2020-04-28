@@ -15,7 +15,6 @@ module "marbot-monitoring-ec2-instance" {
 
   endpoint_id   = "" # to get this value, select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id"
   instance_id   = "" # the EC2 instance id (e.g, i-123456)
-  instance_type = "" # the EC2 instance type (e.g., t3.small)
 }
 ```
 3. Run the following commands:
