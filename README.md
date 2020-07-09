@@ -1,6 +1,6 @@
 # EC2 instance monitoring
 
-Adds alarms to monitor a particular EC2 instance's CPU, network, and EBS, and forwards them to Slack managed by [marbot](https://marbot.io/).
+Adds alarms to monitor a particular EC2 instance's CPU, network, and EBS, and forwards them to Slack or Microsoft Teams managed by [marbot](https://marbot.io/).
 
 ## Usage
 
@@ -13,7 +13,7 @@ module "marbot-monitoring-ec2-instance" {
   source   = "marbot-io/marbot-monitoring-ec2-instance/aws"
   #version = "x.y.z"         # we recommend to pin the version
 
-  endpoint_id   = "" # to get this value, select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id"
+  endpoint_id   = "" # to get this value, select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id"
   instance_id   = "" # the EC2 instance id (e.g, i-123456)
 }
 ```
