@@ -1,8 +1,8 @@
 terraform {
   required_version = ">= 0.12.0"
   required_providers {
-    aws    = ">= 2.48.0, < 3"
-    random = "~> 2.2"
+    aws    = ">= 2.48.0"
+    random = ">= 2.2"
   }
 }
 
@@ -112,7 +112,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "0.4.2",
+  "Version": "0.4.3",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
