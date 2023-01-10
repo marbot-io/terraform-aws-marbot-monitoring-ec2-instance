@@ -62,6 +62,19 @@ variable "network_utilization_threshold" {
   default     = 80
 }
 
+# We can not only check the var.topic_arn !="" because of the Terraform error:  The "count" value depends on resource attributes that cannot be determined until apply, so Terraform cannot predict how many instances will be created.
+variable "create_topic" {
+  type        = bool
+  description = "Create SNS topic? If set to false you must set topic_arn as well!"
+  default     = true
+}
+
+variable "topic_arn" {
+  type        = string
+  description = "Optional SNS topic ARN if create_topic := false (usually the output of the modules marbot-monitoring-basic or marbot-standalone-topic)."
+  default     = ""
+}
+
 variable "stage" {
   type        = string
   description = "marbot stage (never change this!)."
