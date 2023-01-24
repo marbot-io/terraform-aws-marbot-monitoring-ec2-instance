@@ -116,7 +116,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "0.5.0",
+  "Version": "0.6.0",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
@@ -162,7 +162,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
 
 resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.cpu_credit_balance_threshold >= 0 && var.enabled) ? 1 : 0
+  count      = (var.cpu_credit_balance_threshold >= 0 && data.aws_ec2_instance_type.instance.burstable_performance_supported && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-credit-balance-${random_id.id8.hex}"
   alarm_description   = "Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
@@ -186,7 +186,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
 
 resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.ebs_io_credit_balance_threshold >= 0 && var.enabled) ? 1 : 0
+  count      = (var.ebs_io_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-io-credit-balance-${random_id.id8.hex}"
   alarm_description   = "Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
@@ -210,7 +210,7 @@ resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
 
 resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.ebs_throughput_credit_balance_threshold >= 0 && var.enabled) ? 1 : 0
+  count      = (var.ebs_throughput_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-throughput-credit-balance-${random_id.id8.hex}"
   alarm_description   = "Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
@@ -262,6 +262,10 @@ data "http" "network" {
 
 data "aws_instance" "instance" {
   instance_id = var.instance_id
+}
+
+data "aws_ec2_instance_type" "instance" {
+  instance_type = data.aws_instance.instance.instance_type
 }
 
 locals {
