@@ -116,7 +116,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "0.6.0",
+  "Version": "0.7.0",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
@@ -141,7 +141,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
   count      = (var.cpu_utilization_threshold >= 0 && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-utilization-${random_id.id8.hex}"
-  alarm_description   = "Average CPU utilization over last 10 minutes too high. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average CPU utilization over last 10 minutes too high. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "CPUUtilization"
   statistic           = "Average"
@@ -165,7 +165,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   count      = (var.cpu_credit_balance_threshold >= 0 && data.aws_ec2_instance_type.instance.burstable_performance_supported && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-credit-balance-${random_id.id8.hex}"
-  alarm_description   = "Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "CPUCreditBalance"
   statistic           = "Average"
@@ -189,7 +189,7 @@ resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
   count      = (var.ebs_io_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-io-credit-balance-${random_id.id8.hex}"
-  alarm_description   = "Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "EBSIOBalance%"
   statistic           = "Average"
@@ -213,7 +213,7 @@ resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance" {
   count      = (var.ebs_throughput_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-throughput-credit-balance-${random_id.id8.hex}"
-  alarm_description   = "Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "EBSByteBalance%"
   statistic           = "Average"
@@ -237,7 +237,7 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
   count      = var.enabled ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-status-check-${random_id.id8.hex}"
-  alarm_description   = "EC2 instance status check or the system status check has failed. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}instance status check or the system status check has failed. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "StatusCheckFailed"
   statistic           = "Sum"
@@ -272,6 +272,8 @@ locals {
   network          = lookup(jsondecode(data.http.network.response_body), data.aws_instance.instance.instance_type, {})
   network_baseline = lookup(local.network, "baseline", -1)
   network_burst    = lookup(local.network, "burst", -1)
+  instance_name    = lookup(data.aws_instance.instance.tags, "Name", "")
+  alarm_description_prefix = (local.instance_name == "") ? "" : "${local.instance_name}'s "
 }
 
 resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
@@ -279,7 +281,7 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
   count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst >= 0 && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-burst-utilization-${random_id.id8.hex}"
-  alarm_description   = "Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon. (created by marbot)"
   evaluation_periods  = 1
   comparison_operator = "GreaterThanThreshold"
   threshold           = floor(local.network_burst * var.cpu_utilization_threshold) / 100
@@ -335,7 +337,7 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
   count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst >= 0 && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-baseline-utilization-${random_id.id8.hex}"
-  alarm_description   = "Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)"
   evaluation_periods  = 1
   comparison_operator = "GreaterThanThreshold"
   threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100
@@ -391,7 +393,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
   count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst < 0 && var.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-utilization-${random_id.id8.hex}"
-  alarm_description   = "Average Network In+Out utilization over last 10 minutes too high. (created by marbot)"
+  alarm_description   = "${local.alarm_description_prefix}Average Network In+Out utilization over last 10 minutes too high. (created by marbot)"
   evaluation_periods  = 1
   comparison_operator = "GreaterThanThreshold"
   threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100
