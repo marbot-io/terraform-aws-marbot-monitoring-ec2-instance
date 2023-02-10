@@ -12,8 +12,51 @@ data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {}
 
+data "http" "network" {
+  url = "https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json"
+}
+
+data "aws_instance" "instance" {
+  instance_id = var.instance_id
+}
+
+data "aws_ec2_instance_type" "instance" {
+  instance_type = data.aws_instance.instance.instance_type
+}
+
 locals {
-  topic_arn = var.create_topic == false ? var.topic_arn : join("", aws_sns_topic.marbot.*.arn)
+  topic_arn                                            = var.create_topic == false ? var.topic_arn : join("", aws_sns_topic.marbot.*.arn)
+  network                                              = lookup(jsondecode(data.http.network.response_body), data.aws_instance.instance.instance_type, {})
+  network_baseline                                     = lookup(local.network, "baseline", -1)
+  network_burst                                        = lookup(local.network, "burst", -1)
+  instance_name                                        = lookup(data.aws_instance.instance.tags, "Name", "")
+  alarm_description_prefix                             = (local.instance_name == "") ? "" : "${local.instance_name}'s "
+  enabled                                              = var.enabled && lookup(data.aws_instance.instance.tags, "marbot:enabled", "true") != "false"
+  cpu_utilization_threshold                            = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-utilization:threshold", var.cpu_utilization_threshold)), var.cpu_utilization_threshold)
+  cpu_utilization_period_raw                           = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-utilization:period", 600)), 600)
+  cpu_utilization_period                               = min(max(floor(local.cpu_utilization_period_raw / 60) * 60, 60), 86400)
+  cpu_utilization_evaluation_periods_raw               = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-utilization:evaluation-periods", 1)), 1)
+  cpu_utilization_evaluation_periods                   = min(max(local.cpu_utilization_evaluation_periods_raw, 1), floor(86400 / local.cpu_utilization_period))
+  cpu_credit_balance_threshold                         = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-credit-balance:threshold", var.cpu_credit_balance_threshold)), var.cpu_credit_balance_threshold)
+  cpu_credit_balance_period_raw                        = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-credit-balance:period", 600)), 600)
+  cpu_credit_balance_period                            = min(max(floor(local.cpu_credit_balance_period_raw / 60) * 60, 60), 86400)
+  cpu_credit_balance_evaluation_periods_raw            = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:cpu-credit-balance:evaluation-periods", 1)), 1)
+  cpu_credit_balance_evaluation_periods                = min(max(local.cpu_credit_balance_evaluation_periods_raw, 1), floor(86400 / local.cpu_credit_balance_period))
+  ebs_io_credit_balance_threshold                      = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-io-credit-balance:threshold", var.ebs_io_credit_balance_threshold)), var.ebs_io_credit_balance_threshold)
+  ebs_io_credit_balance_period_raw                     = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-io-credit-balance:period", 600)), 600)
+  ebs_io_credit_balance_period                         = min(max(floor(local.ebs_io_credit_balance_period_raw / 60) * 60, 60), 86400)
+  ebs_io_credit_balance_evaluation_periods_raw         = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-io-credit-balance:evaluation-periods", 1)), 1)
+  ebs_io_credit_balance_evaluation_periods             = min(max(local.ebs_io_credit_balance_evaluation_periods_raw, 1), floor(86400 / local.ebs_io_credit_balance_period))
+  ebs_throughput_credit_balance_threshold              = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-throughput-credit-balance:threshold", var.ebs_throughput_credit_balance_threshold)), var.ebs_throughput_credit_balance_threshold)
+  ebs_throughput_credit_balance_period_raw             = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-throughput-credit-balance:period", 600)), 600)
+  ebs_throughput_credit_balance_period                 = min(max(floor(local.ebs_throughput_credit_balance_period_raw / 60) * 60, 60), 86400)
+  ebs_throughput_credit_balance_evaluation_periods_raw = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:ebs-throughput-credit-balance:evaluation-periods", 1)), 1)
+  ebs_throughput_credit_balance_evaluation_periods     = min(max(local.ebs_throughput_credit_balance_evaluation_periods_raw, 1), floor(86400 / local.ebs_throughput_credit_balance_period))
+  network_utilization_threshold                        = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:network-utilization:threshold", var.network_utilization_threshold)), var.network_utilization_threshold)
+  network_utilization_period_raw                       = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:network-utilization:period", 600)), 600)
+  network_utilization_period                           = min(max(floor(local.network_utilization_period_raw / 60) * 60, 60), 86400)
+  network_utilization_evaluation_periods_raw           = try(tonumber(lookup(data.aws_instance.instance.tags, "marbot:network-utilization:evaluation-periods", 1)), 1)
+  network_utilization_evaluation_periods               = min(max(local.network_utilization_evaluation_periods_raw, 1), floor(86400 / local.network_utilization_period))
 }
 
 ##########################################################################
@@ -23,14 +66,14 @@ locals {
 ##########################################################################
 
 resource "aws_sns_topic" "marbot" {
-  count = (var.create_topic && var.enabled) ? 1 : 0
+  count = (var.create_topic && local.enabled) ? 1 : 0
 
   name_prefix = "marbot"
   tags        = var.tags
 }
 
 resource "aws_sns_topic_policy" "marbot" {
-  count = (var.create_topic && var.enabled) ? 1 : 0
+  count = (var.create_topic && local.enabled) ? 1 : 0
 
   arn    = join("", aws_sns_topic.marbot.*.arn)
   policy = data.aws_iam_policy_document.topic_policy.json
@@ -72,7 +115,7 @@ data "aws_iam_policy_document" "topic_policy" {
 
 resource "aws_sns_topic_subscription" "marbot" {
   depends_on = [aws_sns_topic_policy.marbot]
-  count      = (var.create_topic && var.enabled) ? 1 : 0
+  count      = (var.create_topic && local.enabled) ? 1 : 0
 
   topic_arn              = join("", aws_sns_topic.marbot.*.arn)
   protocol               = "https"
@@ -98,7 +141,7 @@ JSON
 
 resource "aws_cloudwatch_event_rule" "monitoring_jump_start_connection" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = var.enabled ? 1 : 0
+  count      = local.enabled ? 1 : 0
 
   name                = "marbot-ec2-instance-connection-${random_id.id8.hex}"
   description         = "Monitoring Jump Start connection. (created by marbot)"
@@ -107,7 +150,7 @@ resource "aws_cloudwatch_event_rule" "monitoring_jump_start_connection" {
 }
 
 resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
-  count = var.enabled ? 1 : 0
+  count = local.enabled ? 1 : 0
 
   rule      = join("", aws_cloudwatch_event_rule.monitoring_jump_start_connection.*.name)
   target_id = "marbot"
@@ -116,7 +159,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "0.7.0",
+  "Version": "0.8.0",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
@@ -138,17 +181,17 @@ resource "random_id" "id8" {
 
 resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.cpu_utilization_threshold >= 0 && var.enabled) ? 1 : 0
+  count      = (local.cpu_utilization_threshold >= 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average CPU utilization over last 10 minutes too high. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "CPUUtilization"
   statistic           = "Average"
-  period              = 600
-  evaluation_periods  = 1
+  period              = local.cpu_utilization_period
+  evaluation_periods  = local.cpu_utilization_evaluation_periods
   comparison_operator = "GreaterThanThreshold"
-  threshold           = var.cpu_utilization_threshold
+  threshold           = local.cpu_utilization_threshold
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   dimensions = {
@@ -156,23 +199,60 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
   }
   treat_missing_data = "notBreaching"
   tags               = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_utilization_anomaly_detection" {
+  depends_on = [aws_sns_topic_subscription.marbot]
+  count      = (local.cpu_utilization_threshold < -1.5 && local.enabled) ? 1 : 0
+
+  alarm_name          = "marbot-ec2-instance-cpu-utilization-${random_id.id8.hex}"
+  alarm_description   = "${local.alarm_description_prefix}Average CPU utilization over last 10 minutes unexpected. (created by marbot)"
+  evaluation_periods  = local.cpu_utilization_evaluation_periods
+  comparison_operator = "GreaterThanUpperThreshold"
+  threshold_metric_id = "e1"
+  alarm_actions       = [local.topic_arn]
+  ok_actions          = [local.topic_arn]
+  treat_missing_data  = "notBreaching"
+  tags                = var.tags
+
+  metric_query {
+    id          = "e1"
+    expression  = "ANOMALY_DETECTION_BAND(m1)"
+    label       = "CPUUtilization (expected)"
+    return_data = "true"
+  }
+
+  metric_query {
+    id          = "m1"
+    return_data = "true"
+    metric {
+      metric_name = "CPUUtilization"
+      namespace   = "AWS/EC2"
+      period      = local.cpu_utilization_period
+      stat        = "Average"
+
+      dimensions = {
+        InstanceId = var.instance_id
+      }
+    }
+  }
 }
 
 
 
 resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.cpu_credit_balance_threshold >= 0 && data.aws_ec2_instance_type.instance.burstable_performance_supported && var.enabled) ? 1 : 0
+  count      = (local.cpu_credit_balance_threshold >= 0 && data.aws_ec2_instance_type.instance.burstable_performance_supported && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-credit-balance-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "CPUCreditBalance"
   statistic           = "Average"
-  period              = 600
-  evaluation_periods  = 1
+  period              = local.cpu_credit_balance_period
+  evaluation_periods  = local.cpu_credit_balance_evaluation_periods
   comparison_operator = "LessThanThreshold"
-  threshold           = var.cpu_credit_balance_threshold
+  threshold           = local.cpu_credit_balance_threshold
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   dimensions = {
@@ -180,23 +260,60 @@ resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   }
   treat_missing_data = "notBreaching"
   tags               = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance_anomaly_detection" {
+  depends_on = [aws_sns_topic_subscription.marbot]
+  count      = (local.cpu_credit_balance_threshold < -1.5 && data.aws_ec2_instance_type.instance.burstable_performance_supported && local.enabled) ? 1 : 0
+
+  alarm_name          = "marbot-ec2-instance-cpu-credit-balance-${random_id.id8.hex}"
+  alarm_description   = "${local.alarm_description_prefix}Average CPU credit balance over last 10 minutes unexpected, expect a significant performance drop soon. (created by marbot)"
+  evaluation_periods  = local.cpu_credit_balance_evaluation_periods
+  comparison_operator = "LessThanLowerThreshold"
+  threshold_metric_id = "e1"
+  alarm_actions       = [local.topic_arn]
+  ok_actions          = [local.topic_arn]
+  treat_missing_data  = "notBreaching"
+  tags                = var.tags
+
+  metric_query {
+    id          = "e1"
+    expression  = "ANOMALY_DETECTION_BAND(m1)"
+    label       = "CPUCreditBalance (expected)"
+    return_data = "true"
+  }
+
+  metric_query {
+    id          = "m1"
+    return_data = "true"
+    metric {
+      metric_name = "CPUCreditBalance"
+      namespace   = "AWS/EC2"
+      period      = local.cpu_credit_balance_period
+      stat        = "Average"
+
+      dimensions = {
+        InstanceId = var.instance_id
+      }
+    }
+  }
 }
 
 
 
 resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.ebs_io_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
+  count      = (local.ebs_io_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-io-credit-balance-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "EBSIOBalance%"
   statistic           = "Average"
-  period              = 600
-  evaluation_periods  = 1
+  period              = local.ebs_io_credit_balance_period
+  evaluation_periods  = local.ebs_io_credit_balance_evaluation_periods
   comparison_operator = "LessThanThreshold"
-  threshold           = var.ebs_io_credit_balance_threshold
+  threshold           = local.ebs_io_credit_balance_threshold
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   dimensions = {
@@ -204,23 +321,60 @@ resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance" {
   }
   treat_missing_data = "notBreaching"
   tags               = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "ebs_io_credit_balance_anomaly_detection" {
+  depends_on = [aws_sns_topic_subscription.marbot]
+  count      = (local.ebs_io_credit_balance_threshold < -1.5 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && local.enabled) ? 1 : 0
+
+  alarm_name          = "marbot-ec2-instance-ebs-io-credit-balance-${random_id.id8.hex}"
+  alarm_description   = "${local.alarm_description_prefix}Average EBS IO credit balance over last 10 minutes unexpected, expect a significant performance drop soon. (created by marbot)"
+  evaluation_periods  = local.ebs_io_credit_balance_evaluation_periods
+  comparison_operator = "LessThanLowerThreshold"
+  threshold_metric_id = "e1"
+  alarm_actions       = [local.topic_arn]
+  ok_actions          = [local.topic_arn]
+  treat_missing_data  = "notBreaching"
+  tags                = var.tags
+
+  metric_query {
+    id          = "e1"
+    expression  = "ANOMALY_DETECTION_BAND(m1)"
+    label       = "EBSIOBalance% (expected)"
+    return_data = "true"
+  }
+
+  metric_query {
+    id          = "m1"
+    return_data = "true"
+    metric {
+      metric_name = "EBSIOBalance%"
+      namespace   = "AWS/EC2"
+      period      = local.ebs_io_credit_balance_period
+      stat        = "Average"
+
+      dimensions = {
+        InstanceId = var.instance_id
+      }
+    }
+  }
 }
 
 
 
 resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.ebs_throughput_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && var.enabled) ? 1 : 0
+  count      = (local.ebs_throughput_credit_balance_threshold >= 0 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-ebs-throughput-credit-balance-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)"
   namespace           = "AWS/EC2"
   metric_name         = "EBSByteBalance%"
   statistic           = "Average"
-  period              = 600
-  evaluation_periods  = 1
+  period              = local.ebs_throughput_credit_balance_period
+  evaluation_periods  = local.ebs_throughput_credit_balance_evaluation_periods
   comparison_operator = "LessThanThreshold"
-  threshold           = var.ebs_throughput_credit_balance_threshold
+  threshold           = local.ebs_throughput_credit_balance_threshold
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   dimensions = {
@@ -230,11 +384,48 @@ resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance" {
   tags               = var.tags
 }
 
+resource "aws_cloudwatch_metric_alarm" "ebs_throughput_credit_balance_anomaly_detection" {
+  depends_on = [aws_sns_topic_subscription.marbot]
+  count      = (local.ebs_throughput_credit_balance_threshold < -1.5 && (data.aws_ec2_instance_type.instance.ebs_optimized_support == "default" || (data.aws_ec2_instance_type.instance.ebs_optimized_support == "supported" && data.aws_instance.instance.ebs_optimized)) && data.aws_ec2_instance_type.instance.ebs_performance_baseline_bandwidth != data.aws_ec2_instance_type.instance.ebs_performance_maximum_bandwidth && local.enabled) ? 1 : 0
+
+  alarm_name          = "marbot-ec2-instance-ebs-throughput-credit-balance-${random_id.id8.hex}"
+  alarm_description   = "${local.alarm_description_prefix}Average EBS throughput credit balance over last 10 minutes unexpected, expect a significant performance drop soon. (created by marbot)"
+  evaluation_periods  = local.ebs_throughput_credit_balance_evaluation_periods
+  comparison_operator = "LessThanLowerThreshold"
+  threshold_metric_id = "e1"
+  alarm_actions       = [local.topic_arn]
+  ok_actions          = [local.topic_arn]
+  treat_missing_data  = "notBreaching"
+  tags                = var.tags
+
+  metric_query {
+    id          = "e1"
+    expression  = "ANOMALY_DETECTION_BAND(m1)"
+    label       = "EBSByteBalance% (expected)"
+    return_data = "true"
+  }
+
+  metric_query {
+    id          = "m1"
+    return_data = "true"
+    metric {
+      metric_name = "EBSByteBalance%"
+      namespace   = "AWS/EC2"
+      period      = local.ebs_throughput_credit_balance_period
+      stat        = "Average"
+
+      dimensions = {
+        InstanceId = var.instance_id
+      }
+    }
+  }
+}
+
 
 
 resource "aws_cloudwatch_metric_alarm" "status_check" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = var.enabled ? 1 : 0
+  count      = local.enabled ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-status-check-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}instance status check or the system status check has failed. (created by marbot)"
@@ -256,35 +447,16 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
 
 
 
-data "http" "network" {
-  url = "https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json"
-}
-
-data "aws_instance" "instance" {
-  instance_id = var.instance_id
-}
-
-data "aws_ec2_instance_type" "instance" {
-  instance_type = data.aws_instance.instance.instance_type
-}
-
-locals {
-  network          = lookup(jsondecode(data.http.network.response_body), data.aws_instance.instance.instance_type, {})
-  network_baseline = lookup(local.network, "baseline", -1)
-  network_burst    = lookup(local.network, "burst", -1)
-  instance_name    = lookup(data.aws_instance.instance.tags, "Name", "")
-  alarm_description_prefix = (local.instance_name == "") ? "" : "${local.instance_name}'s "
-}
-
 resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst >= 0 && var.enabled) ? 1 : 0
+  count      = ((local.network_utilization_threshold < -1.5 || local.network_utilization_threshold >= 0) && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-burst-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon. (created by marbot)"
-  evaluation_periods  = 1
-  comparison_operator = "GreaterThanThreshold"
-  threshold           = floor(local.network_burst * var.cpu_utilization_threshold) / 100
+  evaluation_periods  = local.network_utilization_evaluation_periods
+  comparison_operator = (local.network_utilization_threshold >= 0) ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
+  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
+  threshold_metric_id = (local.network_utilization_threshold >= 0) ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -297,7 +469,7 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkIn" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -314,7 +486,7 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkOut" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -329,18 +501,30 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
     return_data = true
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization_threshold >= 0) ? {} : { enabled = true }
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout)"
+      label       = "EBSByteBalance% (expected)"
+      return_data = true
+    }
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst >= 0 && var.enabled) ? 1 : 0
+  count      = ((local.network_utilization_threshold < -1.5 || local.network_utilization_threshold >= 0) && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-baseline-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)"
-  evaluation_periods  = 1
-  comparison_operator = "GreaterThanThreshold"
-  threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100
+  evaluation_periods  = local.network_utilization_evaluation_periods
+  comparison_operator = (local.network_utilization_threshold >= 0) ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
+  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
+  threshold_metric_id = (local.network_utilization_threshold >= 0) ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -353,7 +537,7 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkIn" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -370,7 +554,7 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkOut" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -385,18 +569,30 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
     return_data = true
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization_threshold >= 0) ? {} : { enabled = true }
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout)"
+      label       = "EBSByteBalance% (expected)"
+      return_data = true
+    }
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "network_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (var.network_utilization_threshold >= 0 && local.network_baseline >= 0 && local.network_burst < 0 && var.enabled) ? 1 : 0
+  count      = ((local.network_utilization_threshold < -1.5 || local.network_utilization_threshold >= 0) && local.network_baseline >= 0 && local.network_burst < 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out utilization over last 10 minutes too high. (created by marbot)"
-  evaluation_periods  = 1
-  comparison_operator = "GreaterThanThreshold"
-  threshold           = floor(local.network_baseline * var.cpu_utilization_threshold) / 100
+  evaluation_periods  = local.network_utilization_evaluation_periods
+  comparison_operator = (local.network_utilization_threshold >= 0) ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
+  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
+  threshold_metric_id = (local.network_utilization_threshold >= 0) ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -409,7 +605,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkIn" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -426,7 +622,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     metric {
       namespace   = "AWS/EC2"
       metric_name = "NetworkOut" # bytes per minute
-      period      = "600"
+      period      = local.network_utilization_period
       stat        = "Average"
       unit        = "Bytes"
 
@@ -441,5 +637,16 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
     return_data = true
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization_threshold >= 0) ? {} : { enabled = true }
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout)"
+      label       = "EBSByteBalance% (expected)"
+      return_data = true
+    }
   }
 }

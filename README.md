@@ -23,6 +23,29 @@ terraform init
 terraform apply
 ```
 
+## Config via tags
+
+You can also configure this module via tags (required v0.8.0 or higher). Tags take precedence over variables (tags override variables).
+
+| tag key                                                   | default value                                      | allowed values                               |
+| --------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
+| `marbot:enabled`                                          | true                                               | true or false                                |
+| `marbot:cpu-utilization:threshold`                        | variable `cpu_utilization_threshold`               | 0-100                                        |
+| `marbot:cpu-utilization:period`                           | 600                                                | <= 86400 and multiple of 60                  |
+| `marbot:cpu-utilization:evaluation-periods`               | 1                                                  | >= 1 and $period*evaluation-periods <= 86400 |
+| `marbot:cpu-credit-balance:threshold`                     | variable `cpu_credit_balance_threshold`            | >= 0                                         |
+| `marbot:cpu-credit-balance:period`                        | 600                                                | <= 86400 and multiple of 60                  |
+| `marbot:cpu-credit-balance:evaluation-periods`            | 1                                                  | >= 1 and $period*evaluation-periods <= 86400 |
+| `marbot:ebs-io-credit-balance:threshold`                  | variable `ebs_io_credit_balance_threshold`         | 0-100                                        |
+| `marbot:ebs-io-credit-balance:period`                     | 600                                                | <= 86400 and multiple of 60                  |
+| `marbot:ebs-io-credit-balance:evaluation-periods`         | 1                                                  | >= 1 and $period*evaluation-periods <= 86400 |
+| `marbot:ebs-throughput-credit-balance:threshold`          | variable `ebs_throughput_credit_balance_threshold` | 0-100                                        |
+| `marbot:ebs-throughput-credit-balance:period`             | 600                                                | <= 86400 and multiple of 60                  |
+| `marbot:ebs-throughput-credit-balance:evaluation-periods` | 1                                                  | >= 1 and $period*evaluation-periods <= 86400 |
+| `marbot:network-utilization:threshold`                    | variable `network_utilization_threshold`           | 0-100                                        |
+| `marbot:network-utilization:period`                       | 600                                                | <= 86400 and multiple of 60                  |
+| `marbot:network-utilization:evaluation-periods`           | 1                                                  | >= 1 and $period*evaluation-periods <= 86400 |
+
 ## Update procedure
 
 1. Update the `version`
