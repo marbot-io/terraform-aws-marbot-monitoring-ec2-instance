@@ -28,7 +28,7 @@ variable "instance_type" {
 
 variable "cpu_utilization_threshold" {
   type        = number
-  description = "The maximum percentage of CPU utilization (set to -1 to disable)."
+  description = "The maximum percentage of CPU utilization (set to -1 to disable or -2 for anomaly detection)."
   default     = 80
 }
 
@@ -40,25 +40,25 @@ variable "burst_monitoring_enabled" {
 
 variable "cpu_credit_balance_threshold" {
   type        = number
-  description = "The minimum number of CPU credits available (t* instances only; set to -1 to disable)."
+  description = "The minimum number of CPU credits available (t* instances only; set to -1 to disable or -2 for anomaly detection)."
   default     = 20
 }
 
 variable "ebs_io_credit_balance_threshold" {
   type        = number
-  description = "The minimum percentage of I/O credits remaining in the burst bucket (smaller instance only; set to -1 to disable)."
+  description = "The minimum percentage of I/O credits remaining in the burst bucket (smaller instances only; set to -1 to disable or -2 for anomaly detection)."
   default     = 20
 }
 
 variable "ebs_throughput_credit_balance_threshold" {
   type        = number
-  description = "The minimum percentage of throughput credits remaining in the burst bucket (smaller instance only; set to -1 to disable)."
+  description = "The minimum percentage of throughput credits remaining in the burst bucket (smaller instances only; set to -1 to disable or -2 for anomaly detection)."
   default     = 20
 }
 
 variable "network_utilization_threshold" {
   type        = number
-  description = "The maximum percentage of network utilization."
+  description = "The maximum percentage of network utilization  (set to -1 to disable or -2 for anomaly detection)."
   default     = 80
 }
 

@@ -23,6 +23,29 @@ terraform init
 terraform apply
 ```
 
+## Config via tags
+
+You can also configure this module by tagging the EC2 instance (required v0.8.0 or higher). Tags take precedence over variables (tags override variables).
+
+| tag key                                                   | default value                                      | allowed values                                          |
+| --------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+| `marbot:enabled`                                          | true                                               | true or false                                           |
+| `marbot:cpu-utilization:threshold`                        | variable `cpu_utilization_threshold`               | 0-100; set to -1 to disable or -2 for anomaly detection |
+| `marbot:cpu-utilization:period`                           | 600                                                | <= 86400 and multiple of 60                             |
+| `marbot:cpu-utilization:evaluation-periods`               | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
+| `marbot:cpu-credit-balance:threshold`                     | variable `cpu_credit_balance_threshold`            | >= 0; set to -1 to disable or -2 for anomaly detection  |
+| `marbot:cpu-credit-balance:period`                        | 600                                                | <= 86400 and multiple of 60                             |
+| `marbot:cpu-credit-balance:evaluation-periods`            | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
+| `marbot:ebs-io-credit-balance:threshold`                  | variable `ebs_io_credit_balance_threshold`         | 0-100; set to -1 to disable or -2 for anomaly detection |
+| `marbot:ebs-io-credit-balance:period`                     | 600                                                | <= 86400 and multiple of 60                             |
+| `marbot:ebs-io-credit-balance:evaluation-periods`         | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
+| `marbot:ebs-throughput-credit-balance:threshold`          | variable `ebs_throughput_credit_balance_threshold` | 0-100; set to -1 to disable or -2 for anomaly detection |
+| `marbot:ebs-throughput-credit-balance:period`             | 600                                                | <= 86400 and multiple of 60                             |
+| `marbot:ebs-throughput-credit-balance:evaluation-periods` | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
+| `marbot:network-utilization:threshold`                    | variable `network_utilization_threshold`           | 0-100; set to -1 to disable or -2 for anomaly detection |
+| `marbot:network-utilization:period`                       | 600                                                | <= 86400 and multiple of 60                             |
+| `marbot:network-utilization:evaluation-periods`           | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
+
 ## Update procedure
 
 1. Update the `version`
