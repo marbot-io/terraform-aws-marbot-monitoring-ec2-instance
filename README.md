@@ -25,7 +25,7 @@ terraform apply
 
 ## Config via tags
 
-You can also configure this module via tags (required v0.8.0 or higher). Tags take precedence over variables (tags override variables).
+You can also configure this module by tagging the EC2 instance (required v0.8.0 or higher). Tags take precedence over variables (tags override variables).
 
 | tag key                                                   | default value                                      | allowed values                               |
 | --------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------- |
