@@ -159,7 +159,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "0.8.0",
+  "Version": "0.8.1",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
@@ -523,7 +523,7 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)"
   evaluation_periods  = local.network_utilization_evaluation_periods
   comparison_operator = (local.network_utilization_threshold >= 0) ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
-  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
+  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_baseline * local.network_utilization_threshold) / 100 : null
   threshold_metric_id = (local.network_utilization_threshold >= 0) ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
@@ -591,7 +591,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out utilization over last 10 minutes too high. (created by marbot)"
   evaluation_periods  = local.network_utilization_evaluation_periods
   comparison_operator = (local.network_utilization_threshold >= 0) ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
-  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
+  threshold           = (local.network_utilization_threshold >= 0) ? floor(local.network_baseline * local.network_utilization_threshold) / 100 : null
   threshold_metric_id = (local.network_utilization_threshold >= 0) ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
