@@ -239,13 +239,12 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization_anomaly_detection" {
       id          = "m2"
       expression  = "IF(m1<${local.cpu_utilization_threshold}, ${local.cpu_utilization_threshold}, m1)"
       label       = "CPUUtilization (threshold)"
-      return_data = "true"
     }
   }
 
   metric_query {
     id          = "m1"
-    return_data = (local.cpu_utilization == "anomaly_detection") ? "true" : null
+    return_data = "true"
     metric {
       metric_name = "CPUUtilization"
       namespace   = "AWS/EC2"
