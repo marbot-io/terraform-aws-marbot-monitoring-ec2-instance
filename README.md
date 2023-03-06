@@ -27,24 +27,40 @@ terraform apply
 
 You can also configure this module by tagging the EC2 instance (required v0.8.0 or higher). Tags take precedence over variables (tags override variables).
 
+| tag key                                                   | default value                                               | allowed values                                        |
+| --------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| `marbot`                                                  | on                                                          | on|off                                                |
+| `marbot:cpu-utilization`                                  | variable `cpu_utilization`                                  | static|anomaly_detection|static_anomaly_detection|off |
+| `marbot:cpu-utilization:threshold`                        | variable `cpu_utilization_threshold`                        | 0-100                                                 |
+| `marbot:cpu-utilization:period`                           | variable `cpu_utilization_period`                           | <= 86400 and multiple of 60                           |
+| `marbot:cpu-utilization:evaluation-periods`               | variable `cpu_utilization_evaluation_periods`               | >= 1 and $period*$evaluation-periods <= 86400         |
+| `marbot:cpu-credit-balance`                               | variable `cpu_credit_balance`                               | static|anomaly_detection|off                          |
+| `marbot:cpu-credit-balance:threshold`                     | variable `cpu_credit_balance_threshold`                     | >= 0                                                  |
+| `marbot:cpu-credit-balance:period`                        | variable `ebs_io_credit_balance_period`                     | <= 86400 and multiple of 60                           |
+| `marbot:cpu-credit-balance:evaluation-periods`            | variable `ebs_io_credit_balance_evaluation_periods`         | >= 1 and $period*$evaluation-periods <= 86400         |
+| `marbot:ebs-io-credit-balance`                            | variable `ebs_io_credit_balance`                            | static|anomaly_detection|off                          |
+| `marbot:ebs-io-credit-balance:threshold`                  | variable `ebs_io_credit_balance_threshold`                  | 0-100                                                 |
+| `marbot:ebs-io-credit-balance:period`                     | variable `ebs_io_credit_balance_period`                     | <= 86400 and multiple of 60                           |
+| `marbot:ebs-io-credit-balance:evaluation-periods`         | variable `ebs_io_credit_balance_evaluation_periods`         | >= 1 and $period*$evaluation-periods <= 86400         |
+| `marbot:ebs-throughput-credit-balance`                    | variable `ebs_throughput_credit_balance`                    | static|anomaly_detection|off                          |
+| `marbot:ebs-throughput-credit-balance:threshold`          | variable `ebs_throughput_credit_balance_threshold`          | 0-100                                                 |
+| `marbot:ebs-throughput-credit-balance:period`             | variable `ebs_throughput_credit_balance_period`             | <= 86400 and multiple of 60                           |
+| `marbot:ebs-throughput-credit-balance:evaluation-periods` | variable `ebs_throughput_credit_balance_evaluation_periods` | >= 1 and $period*$evaluation-periods <= 86400         |
+| `marbot:network-utilization`                              | variable `network_utilization`                              | static|anomaly_detection|static_anomaly_detection|off |
+| `marbot:network-utilization:threshold`                    | variable `network_utilization_threshold`                    | 0-100                                                 |
+| `marbot:network-utilization:period`                       | variable `network_utilization_period`                       | <= 86400 and multiple of 60                           |
+| `marbot:network-utilization:evaluation-periods`           | variable `network_utilization_evaluation_periods`           | >= 1 and $period*$evaluation-periods <= 86400         |
+
+### Deprecated config via tags
+
 | tag key                                                   | default value                                      | allowed values                                          |
 | --------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
 | `marbot:enabled`                                          | true                                               | true or false                                           |
 | `marbot:cpu-utilization:threshold`                        | variable `cpu_utilization_threshold`               | 0-100; set to -1 to disable or -2 for anomaly detection |
-| `marbot:cpu-utilization:period`                           | 600                                                | <= 86400 and multiple of 60                             |
-| `marbot:cpu-utilization:evaluation-periods`               | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
 | `marbot:cpu-credit-balance:threshold`                     | variable `cpu_credit_balance_threshold`            | >= 0; set to -1 to disable or -2 for anomaly detection  |
-| `marbot:cpu-credit-balance:period`                        | 600                                                | <= 86400 and multiple of 60                             |
-| `marbot:cpu-credit-balance:evaluation-periods`            | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
 | `marbot:ebs-io-credit-balance:threshold`                  | variable `ebs_io_credit_balance_threshold`         | 0-100; set to -1 to disable or -2 for anomaly detection |
-| `marbot:ebs-io-credit-balance:period`                     | 600                                                | <= 86400 and multiple of 60                             |
-| `marbot:ebs-io-credit-balance:evaluation-periods`         | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
 | `marbot:ebs-throughput-credit-balance:threshold`          | variable `ebs_throughput_credit_balance_threshold` | 0-100; set to -1 to disable or -2 for anomaly detection |
-| `marbot:ebs-throughput-credit-balance:period`             | 600                                                | <= 86400 and multiple of 60                             |
-| `marbot:ebs-throughput-credit-balance:evaluation-periods` | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
 | `marbot:network-utilization:threshold`                    | variable `network_utilization_threshold`           | 0-100; set to -1 to disable or -2 for anomaly detection |
-| `marbot:network-utilization:period`                       | 600                                                | <= 86400 and multiple of 60                             |
-| `marbot:network-utilization:evaluation-periods`           | 1                                                  | >= 1 and $period*evaluation-periods <= 86400            |
 
 ## Update procedure
 
