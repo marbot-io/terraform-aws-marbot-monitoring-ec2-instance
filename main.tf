@@ -470,14 +470,14 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
 
 resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection") && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
+  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection" || local.network_utilization == "static_anomaly_detection") && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-burst-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out burst utilization too high, expect a significant performance drop soon. (created by marbot)"
   evaluation_periods  = local.network_utilization_evaluation_periods
   comparison_operator = (local.network_utilization == "static") ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
   threshold           = (local.network_utilization == "static") ? floor(local.network_burst * local.network_utilization_threshold) / 100 : null
-  threshold_metric_id = (local.network_utilization == "anomaly_detection") ? "e1" : null
+  threshold_metric_id = (local.network_utilization == "static") ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -521,7 +521,7 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     id          = "inout"
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
-    return_data = true
+    return_data = "true"
   }
 
   dynamic "metric_query" {
@@ -530,22 +530,43 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     content {
       id          = "e1"
       expression  = "ANOMALY_DETECTION_BAND(inout)"
-      label       = "EBSByteBalance% (expected)"
-      return_data = true
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "inout2"
+      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label       = "NetworkUtilization (threshold)"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout2)"
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
     }
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection") && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
+  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection" || local.network_utilization == "static_anomaly_detection") && local.network_baseline >= 0 && local.network_burst >= 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-baseline-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out baseline utilization too high, you might can burst. (created by marbot)"
   evaluation_periods  = local.network_utilization_evaluation_periods
   comparison_operator = (local.network_utilization == "static") ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
   threshold           = (local.network_utilization == "static") ? floor(local.network_baseline * local.network_utilization_threshold) / 100 : null
-  threshold_metric_id = (local.network_utilization == "anomaly_detection") ? "e1" : null
+  threshold_metric_id = (local.network_utilization == "static") ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -589,7 +610,7 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     id          = "inout"
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
-    return_data = true
+    return_data = "true"
   }
 
   dynamic "metric_query" {
@@ -598,22 +619,43 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     content {
       id          = "e1"
       expression  = "ANOMALY_DETECTION_BAND(inout)"
-      label       = "EBSByteBalance% (expected)"
-      return_data = true
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "inout2"
+      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label       = "NetworkUtilization (threshold)"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout2)"
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
     }
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "network_utilization" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection") && local.network_baseline >= 0 && local.network_burst < 0 && local.enabled) ? 1 : 0
+  count      = ((local.network_utilization == "static" || local.network_utilization == "anomaly_detection" || local.network_utilization == "static_anomaly_detection") && local.network_baseline >= 0 && local.network_burst < 0 && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-network-utilization-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average Network In+Out utilization too high. (created by marbot)"
   evaluation_periods  = local.network_utilization_evaluation_periods
   comparison_operator = (local.network_utilization == "static") ? "GreaterThanThreshold" : "GreaterThanUpperThreshold"
   threshold           = (local.network_utilization == "static") ? floor(local.network_baseline * local.network_utilization_threshold) / 100 : null
-  threshold_metric_id = (local.network_utilization == "anomaly_detection") ? "e1" : null
+  threshold_metric_id = (local.network_utilization == "static") ? null : "e1"
   alarm_actions       = [local.topic_arn]
   ok_actions          = [local.topic_arn]
   treat_missing_data  = "notBreaching"
@@ -657,7 +699,7 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     id          = "inout"
     label       = "In-Out"
     expression  = "(in+out)/60*8/1000/1000/1000" # to Gbit/s
-    return_data = true
+    return_data = "true"
   }
 
   dynamic "metric_query" {
@@ -666,8 +708,29 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     content {
       id          = "e1"
       expression  = "ANOMALY_DETECTION_BAND(inout)"
-      label       = "EBSByteBalance% (expected)"
-      return_data = true
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "inout2"
+      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label       = "NetworkUtilization (threshold)"
+    }
+  }
+
+  dynamic "metric_query" {
+    for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
+
+    content {
+      id          = "e1"
+      expression  = "ANOMALY_DETECTION_BAND(inout2)"
+      label       = "NetworkUtilization (expected)"
+      return_data = "true"
     }
   }
 }
