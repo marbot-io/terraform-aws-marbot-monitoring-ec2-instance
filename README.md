@@ -36,8 +36,8 @@ You can also configure this module by tagging the EC2 instance (required v0.8.0 
 | `marbot:cpu-utilization:evaluation-periods`               | variable `cpu_utilization_evaluation_periods`               | >= 1 and $period*$evaluation-periods <= 86400         |
 | `marbot:cpu-credit-balance`                               | variable `cpu_credit_balance`                               | static|anomaly_detection|off                          |
 | `marbot:cpu-credit-balance:threshold`                     | variable `cpu_credit_balance_threshold`                     | >= 0                                                  |
-| `marbot:cpu-credit-balance:period`                        | variable `ebs_io_credit_balance_period`                     | <= 86400 and multiple of 60                           |
-| `marbot:cpu-credit-balance:evaluation-periods`            | variable `ebs_io_credit_balance_evaluation_periods`         | >= 1 and $period*$evaluation-periods <= 86400         |
+| `marbot:cpu-credit-balance:period`                        | variable `cpu_credit_balance_period`                        | <= 86400 and multiple of 60                           |
+| `marbot:cpu-credit-balance:evaluation-periods`            | variable `cpu_credit_balance_evaluation_periods`            | >= 1 and $period*$evaluation-periods <= 86400         |
 | `marbot:ebs-io-credit-balance`                            | variable `ebs_io_credit_balance`                            | static|anomaly_detection|off                          |
 | `marbot:ebs-io-credit-balance:threshold`                  | variable `ebs_io_credit_balance_threshold`                  | 0-100                                                 |
 | `marbot:ebs-io-credit-balance:period`                     | variable `ebs_io_credit_balance_period`                     | <= 86400 and multiple of 60                           |
