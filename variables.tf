@@ -75,7 +75,7 @@ variable "cpu_utilization_evaluation_periods" {
 
 variable "cpu_credit_balance" {
   type        = string
-  description = "CPU burst credits for t* instances (static|anomaly_detection|off)."
+  description = "CPU burst credits for t2 standard instances (static|anomaly_detection|off)."
   default     = "static"
 }
 

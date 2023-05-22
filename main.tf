@@ -15,7 +15,7 @@ data "aws_region" "current" {}
 data "http" "network" {
   url = "https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json"
 }
-  
+
 data "aws_instance" "instance" {
   instance_id = var.instance_id
 }
@@ -160,7 +160,7 @@ resource "aws_cloudwatch_event_rule" "monitoring_jump_start_connection" {
 }
 
 resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
-  count = (var.module_version_monitoring_enabled && local.enabled)  ? 1 : 0
+  count = (var.module_version_monitoring_enabled && local.enabled) ? 1 : 0
 
   rule      = join("", aws_cloudwatch_event_rule.monitoring_jump_start_connection.*.name)
   target_id = "marbot"
@@ -169,7 +169,7 @@ resource "aws_cloudwatch_event_target" "monitoring_jump_start_connection" {
 {
   "Type": "monitoring-jump-start-tf-connection",
   "Module": "ec2-instance",
-  "Version": "1.1.0",
+  "Version": "1.1.1",
   "Partition": "${data.aws_partition.current.partition}",
   "AccountId": "${data.aws_caller_identity.current.account_id}",
   "Region": "${data.aws_region.current.name}"
@@ -236,9 +236,9 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization_anomaly_detection" {
     for_each = (local.cpu_utilization == "static_anomaly_detection") ? { enabled = true } : {}
 
     content {
-      id          = "m2"
-      expression  = "IF(m1<${local.cpu_utilization_threshold}, ${local.cpu_utilization_threshold}, m1)"
-      label       = "CPUUtilization (threshold)"
+      id         = "m2"
+      expression = "IF(m1<${local.cpu_utilization_threshold}, ${local.cpu_utilization_threshold}, m1)"
+      label      = "CPUUtilization (threshold)"
     }
   }
 
@@ -262,7 +262,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_utilization_anomaly_detection" {
 
 resource "aws_cloudwatch_metric_alarm" "cpu_credit_balance" {
   depends_on = [aws_sns_topic_subscription.marbot]
-  count      = (local.cpu_credit_balance == "static" && data.aws_ec2_instance_type.instance.burstable_performance_supported && local.enabled) ? 1 : 0
+  count      = (local.cpu_credit_balance == "static" && startswith(data.aws_instance.instance.instance_type, "t2.") && (length(data.aws_instance.instance.credit_specification) > 0 ? data.aws_instance.instance.credit_specification[0].cpu_credits == "standard" : false) && data.aws_ec2_instance_type.instance.burstable_performance_supported && local.enabled) ? 1 : 0
 
   alarm_name          = "marbot-ec2-instance-cpu-credit-balance-${random_id.id8.hex}"
   alarm_description   = "${local.alarm_description_prefix}Average CPU credit balance too low, expect a significant performance drop soon. (created by marbot)"
@@ -538,9 +538,9 @@ resource "aws_cloudwatch_metric_alarm" "network_burst_utilization" {
     for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
 
     content {
-      id          = "inout2"
-      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
-      label       = "NetworkUtilization (threshold)"
+      id         = "inout2"
+      expression = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label      = "NetworkUtilization (threshold)"
     }
   }
 
@@ -627,9 +627,9 @@ resource "aws_cloudwatch_metric_alarm" "network_baseline_utilization" {
     for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
 
     content {
-      id          = "inout2"
-      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
-      label       = "NetworkUtilization (threshold)"
+      id         = "inout2"
+      expression = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label      = "NetworkUtilization (threshold)"
     }
   }
 
@@ -716,9 +716,9 @@ resource "aws_cloudwatch_metric_alarm" "network_utilization" {
     for_each = (local.network_utilization == "static_anomaly_detection") ? { enabled = true } : {}
 
     content {
-      id          = "inout2"
-      expression  = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
-      label       = "NetworkUtilization (threshold)"
+      id         = "inout2"
+      expression = "IF(inout<${local.network_utilization_threshold}, ${local.network_utilization_threshold}, inout)"
+      label      = "NetworkUtilization (threshold)"
     }
   }
 
